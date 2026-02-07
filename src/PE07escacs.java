@@ -1,29 +1,32 @@
 import java.util.Scanner;
 import java.util.ArrayList;
 
-
 public class PE07escacs {
 
-    // Array List 
+    // Llistes on hauríem de guardar les peces capturades.
+    // (Ara mateix el codi NO les omple, perquè processMove no fa captura real.)
     ArrayList<Character> capturedByWhite = new ArrayList<>();
     ArrayList<Character> capturedByBlack = new ArrayList<>();
-    // Players
+
+    // Noms dels jugadors
     String whitePlayer;
     String blackPlayer;
 
-    // Constants
+    // Tauler d'escacs: 8x8 i caràcter per representar buit
     static final int SIZE = 8;
     static final char EMPTY = '.';
 
-    // Game state
+    // Estat del joc
     char[][] board = new char[SIZE][SIZE];
-    int currentPlayer; // 0 = white, 1 = black
 
-    // Historial
+    // 0 = blanc, 1 = negre
+    int currentPlayer;
+
+    // Historial (guardem els moviments en text: "e2 e4")
     int moveCount;
     String[] history = new String[150];
 
-    // Input
+    // Entrada per consola
     Scanner sc = new Scanner(System.in);
 
     public static void main(String[] args) {
@@ -31,73 +34,87 @@ public class PE07escacs {
         game.mainGame();
     }
 
-    // Main
-
     public void mainGame() {
-    askPlayers();
-    startGame();
-    showBoard();
-    showCaptured();
+        // 1) Demanem noms
+        askPlayers();
 
-    boolean gameOver = false;
+        // 2) Preparem el tauler i reiniciem variables
+        startGame();
 
-    while (!gameOver) {
+        // 3) Primera impressió (tauler + captures)
+        showBoard();
+        showCaptured();
 
-        System.out.println();
-        System.out.print("Turn: ");
-        if (currentPlayer == 0) {
-            System.out.println("White (" + whitePlayer + ")");
-        } else {
-            System.out.println("Black (" + blackPlayer + ")");
-        }
+        boolean gameOver = false;
 
-        String move = askMove();
+        // Bucle principal: només s'acaba quan algú es rendeix
+        while (!gameOver) {
 
-        if (isHelp(move)) {
-            showHelp();
-            continue;
-        }
+            System.out.println();
+            System.out.print("Turn: ");
+            if (currentPlayer == 0) {
+                System.out.println("White (" + whitePlayer + ")");
+            } else {
+                System.out.println("Black (" + blackPlayer + ")");
+            }
 
-        if (isResign(move)) {
-            System.out.println("Resign. Game over.");
-            System.out.print("Winner: ");
-            if (currentPlayer == 0) System.out.println(blackPlayer);
-            else System.out.println(whitePlayer);
+            // L'usuari entra un moviment o una comanda
+            String move = askMove();
 
-            gameOver = true;
-            printSummary();
-            break;
-        }
+            // "help" no canvia res del joc, només mostra info
+            if (isHelp(move)) {
+                showHelp();
+                continue;
+            }
 
-        boolean moved = processMove(move);
+            // "resign" acaba la partida immediatament
+            if (isResign(move)) {
+                System.out.println("Resign. Game over.");
+                System.out.print("Winner: ");
+                if (currentPlayer == 0) System.out.println(blackPlayer);
+                else System.out.println(whitePlayer);
 
-        if (moved) {
-            saveHistory(move);
-            moveCount++;
-            changeTurn();
-            showBoard();
-            showCaptured();
-        } else {
-            System.out.println("Invalid move. Try again.");
+                gameOver = true;
+                printSummary();
+                break;
+            }
+
+            // Intentem aplicar el moviment
+            boolean moved = processMove(move);
+
+            if (moved) {
+                // Si s'ha pogut moure: guardem moviment, incrementem comptador i canviem torn
+                saveHistory(move);
+                moveCount++;
+                changeTurn();
+                showBoard();
+                showCaptured();
+            } else {
+                // Si no: mateix jugador torna a intentar (no canviem torn)
+                System.out.println("Invalid move. Try again.");
+            }
         }
     }
-}
 
-
-    // Set-up
     public void startGame() {
+        // Reinicialitza el tauler i col·loca les peces com al principi d'una partida
         initBoard();
         placeInitialPieces();
-        currentPlayer = 0; // Blanc comença
+
+        // Blanc comença
+        currentPlayer = 0;
+
+        // Reinici d'historial i captures
         moveCount = 0;
-
-
         clearHistory();
-        capturedByWhite.clear();        capturedByBlack.clear();
+
+        // Buidem llistes de captures
+        capturedByWhite.clear();
+        capturedByBlack.clear();
     }
-    
 
     public void initBoard() {
+        // Deixa totes les caselles buides (.)
         for (int row = 0; row < SIZE; row++) {
             for (int col = 0; col < SIZE; col++) {
                 board[row][col] = EMPTY;
@@ -106,7 +123,7 @@ public class PE07escacs {
     }
 
     public void placeInitialPieces() {
-        // Negres 0 i 1.
+        // Negres (files 0 i 1)
         board[0][0] = 'r'; board[0][1] = 'n'; board[0][2] = 'b'; board[0][3] = 'q';
         board[0][4] = 'k'; board[0][5] = 'b'; board[0][6] = 'n'; board[0][7] = 'r';
 
@@ -114,7 +131,7 @@ public class PE07escacs {
             board[1][col] = 'p';
         }
 
-        // Blanques 6 i 7
+        // Blanques (files 6 i 7)
         board[7][0] = 'R'; board[7][1] = 'N'; board[7][2] = 'B'; board[7][3] = 'Q';
         board[7][4] = 'K'; board[7][5] = 'B'; board[7][6] = 'N'; board[7][7] = 'R';
 
@@ -123,31 +140,28 @@ public class PE07escacs {
         }
     }
 
-    // Tauler
-  public void showBoard() {
+    public void showBoard() {
+        // Imprimeix el tauler amb coordenades (a-h i 8-1) per orientar-se fàcilment
+        System.out.println();
+        System.out.println("      a   b   c   d   e   f   g   h");
+        System.out.println("    ---------------------------------");
 
-    System.out.println();
-    System.out.println("      a   b   c   d   e   f   g   h");
-    System.out.println("    ---------------------------------");
+        for (int row = 0; row < SIZE; row++) {
+            System.out.print(" " + (8 - row) + "  |");
 
-    for (int row = 0; row < SIZE; row++) {
-        System.out.print(" " + (8 - row) + "  |");
+            for (int col = 0; col < SIZE; col++) {
+                System.out.print(" " + board[row][col] + " |");
+            }
 
-        for (int col = 0; col < SIZE; col++) {
-            System.out.print(" " + board[row][col] + " |");
+            System.out.println("  " + (8 - row));
+            System.out.println("    ---------------------------------");
         }
 
-        System.out.println("  " + (8 - row));
-        System.out.println("    ---------------------------------");
+        System.out.println("      a   b   c   d   e   f   g   h");
     }
 
-    System.out.println("      a   b   c   d   e   f   g   h");
-}
-
-
-
-
     public void showHelp() {
+        // Ajuda ràpida per l'usuari
         System.out.println("---------- HELP ----------");
         System.out.println("e2 e4   -> move a piece from e2 to e4");
         System.out.println("help    -> show this help");
@@ -155,14 +169,14 @@ public class PE07escacs {
         System.out.println("--------------------------");
     }
 
-    //Jugadors:
-
     public void askPlayers() {
+        // Demana noms i els valida (no buit i no només números)
         whitePlayer = askName("White player name: ");
         blackPlayer = askName("Black player name: ");
     }
 
     public String askName(String msg) {
+        // Bucla fins que el nom compleixi condicions
         String name;
         while (true) {
             System.out.print(msg);
@@ -179,6 +193,7 @@ public class PE07escacs {
     }
 
     public boolean isNumber(String s) {
+        // Retorna true si TOTS els caràcters són dígits
         for (int i = 0; i < s.length(); i++) {
             if (s.charAt(i) < '0' || s.charAt(i) > '9') {
                 return false;
@@ -188,6 +203,7 @@ public class PE07escacs {
     }
 
     public String getCurrentPlayerName() {
+        // Només serveix per imprimir (lògica simple de torn)
         if (currentPlayer == 0) return whitePlayer;
         return blackPlayer;
     }
@@ -202,8 +218,8 @@ public class PE07escacs {
         return "Black";
     }
 
-    // Els inputs + comandes
     public String askMove() {
+        // Format esperat: "e2 e4" o comandes
         System.out.print("Move (e2 e4 / help / resign): ");
         return sc.nextLine().trim();
     }
@@ -216,32 +232,38 @@ public class PE07escacs {
         return s.equalsIgnoreCase("resign");
     }
 
-   //Historial + Canvia de torn
     public void changeTurn() {
+        // Alterna entre 0 i 1 (blanc/negre)
         if (currentPlayer == 0) currentPlayer = 1;
         else currentPlayer = 0;
     }
 
     public void saveHistory(String move) {
+        // Guarda el moviment al vector si encara hi ha espai
         if (moveCount < history.length) {
             history[moveCount] = move;
         }
     }
 
     public void clearHistory() {
+        // Deixa l'historial net (null) per una nova partida
         for (int i = 0; i < history.length; i++) {
             history[i] = null;
         }
     }
 
-    
-    // Falta validar totes les peçes (Reina,rei,peo ...)
+    // IMPORTANT:
+    // Ara mateix aquí NO es valida el moviment real de les peces (peó, cavall, etc.).
+    // Només comprova format + origen amb peça + que sigui del jugador actual.
     public boolean processMove(String move) {
         if (!isValidFormat(move)) {
             System.out.println("Invalid format. Use: e2 e4");
             return false;
         }
 
+        // Convertim "e2" a coordenades del tauler:
+        // col = lletra - 'a'
+        // row = 8 - número (perquè la fila 8 és row 0 a l'array)
         int fromCol = move.charAt(0) - 'a';
         int fromRow = 8 - (move.charAt(1) - '0');
         int toCol   = move.charAt(3) - 'a';
@@ -259,7 +281,11 @@ public class PE07escacs {
             return false;
         }
 
-        // Moviment bàsic, sense normas del joc d'escacs.
+        // Aquí mou directament la peça sense regles d'escacs.
+        // Si vols captures reals, aquí s'hauria de:
+        //  - mirar board[toRow][toCol]
+        //  - decidir si és enemic
+        //  - afegir-ho a capturedByWhite / capturedByBlack
         board[toRow][toCol] = piece;
         board[fromRow][fromCol] = EMPTY;
 
@@ -267,6 +293,7 @@ public class PE07escacs {
     }
 
     public boolean isValidFormat(String move) {
+        // Format mínim: "e2 e4" (5 caràcters i espai al mig)
         if (move.length() != 5) return false;
         if (move.charAt(2) != ' ') return false;
 
@@ -275,6 +302,7 @@ public class PE07escacs {
         char c2 = move.charAt(3);
         char r2 = move.charAt(4);
 
+        // Rang vàlid del tauler: a-h i 1-8
         if (c1 < 'a' || c1 > 'h') return false;
         if (c2 < 'a' || c2 > 'h') return false;
         if (r1 < '1' || r1 > '8') return false;
@@ -284,6 +312,7 @@ public class PE07escacs {
     }
 
     public boolean isCurrentPlayerPiece(char piece) {
+        // Majúscules = blanques, minúscules = negres
         if (currentPlayer == 0) {
             return Character.isUpperCase(piece);
         } else {
@@ -292,24 +321,26 @@ public class PE07escacs {
     }
 
     public void showCaptured(){
+        // Mostra les llistes de captures.
+        // Avís: ara mateix estaran buides perquè no s'afegeixen captures enlloc.
         System.out.println("Captured By White: ");
         for(int i=0; i <capturedByWhite.size();i++){
             System.out.println(capturedByWhite.get(i) + " ");
         }
         System.out.println();
 
+        // Aquí falten els textos "Captured By Black:", però no ho canvio perquè és lògica/UI original.
         for(int i=0; i<capturedByBlack.size();i++){
             System.out.println(capturedByBlack.get(i) + " ");
         }
         System.out.println(); 
-
     }
 
     public void printSummary(){
+        // Imprimeix el resum: llista de moviments guardats
         System.out.println("Game Summary:");
         for(int i=0; i<moveCount;i++){
             System.out.println((i+1) + ". " + history[i]);
         }  
-        
     }
 }

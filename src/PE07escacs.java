@@ -217,7 +217,7 @@ public class PE07escacs {
         if (currentPlayer == 0) return "White";
         return "Black";
     }
-
+    
     public String askMove() {
         // Format esperat: "e2 e4" o comandes
         System.out.print("Move (e2 e4 / help / resign): ");
